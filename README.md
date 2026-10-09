@@ -79,16 +79,16 @@
 Откройте `aninerel-4200-invertor.yaml` и настройте под себя:
 
 substitutions:
-  name: "aninerel4200"
-  friendly_name: "Aninerel4200"
-  tx_pin: GPIO21
-  rx_pin: GPIO20
-  device_ip: 192.168.0.116
-  version: "05.10.2026"
-  reboot_timeout: 0s
-  flash_write_interval: 10min
+-  name: "aninerel4200"
+-  friendly_name: "Aninerel4200"
+-  tx_pin: GPIO21
+-  rx_pin: GPIO20
+-  device_ip: 192.168.0.116
+-  version: "05.10.2026"
+-  reboot_timeout: 0s
+-  flash_write_interval: 10min
 ### 3. Подключаемые компоненты
-<<: !include attach/common/esphome.yaml
+- <<: !include attach/common/esphome.yaml
 <<: !include attach/common/esp/esp32_c3_idf.yaml
 <<: !include attach/common/logger/debug_component_error.yaml
 <<: !include attach/common/api.yaml
