@@ -158,6 +158,8 @@
 | `switch.remote_switch` | Удалённое включение/выключение |
 | `button.exit_fault_state` | Сброс аварийного состояния |
 
+- [yaml файл прошивки](aninerel-4200-invertor.yaml)
+- [внешний вид](esp32c3.jpg)
 ## 🙏 Благодарности
 
 - **ESPHome сообществу** за фреймворк и компонент `modbus_controller`.
