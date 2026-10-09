@@ -78,7 +78,6 @@
 
 Откройте `aninerel-4200-invertor.yaml` и настройте под себя:
 
-```yaml
 substitutions:
   name: "aninerel4200"
   friendly_name: "Aninerel4200"
