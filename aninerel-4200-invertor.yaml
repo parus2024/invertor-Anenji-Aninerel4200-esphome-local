@@ -104,19 +104,13 @@ interval:
           }
           // GRID IMPORT ENERGY
           // Время между измерениями.
-          static uint32_t last_ms = millis();
-          uint32_t current_ms = millis();
-          float dt_hours =
-              (current_ms - last_ms) / 3600000.0f;
-          last_ms = current_ms;
-          // Положительная average mains power = потребление энергии из сети
+          const float dt_hours = 10.0f / 3600.0f;
+
           float grid_power = id(average_mains_power).state;
-          if (!isnan(grid_power) &&
-              grid_power > 0.0f) {
+          if (!isnan(grid_power) && grid_power > 0.0f) {
             float grid_energy_kwh =
                 grid_power * dt_hours / 1000.0f;
-            id(grid_import_energy_today) +=
-                grid_energy_kwh;
+            id(grid_import_energy_today) += grid_energy_kwh;
           }
 sensor:
   - platform: template 
@@ -124,7 +118,7 @@ sensor:
     id: pv_energy_today_sensor 
     unit_of_measurement: "kWh" 
     device_class: energy 
-    state_class: total_increasing 
+    state_class: total 
     icon: mdi:solar-power-variant 
     accuracy_decimals: 2 
     lambda: |- 
@@ -178,6 +172,8 @@ sensor:
     accuracy_decimals: 2
     method: trapezoid
     filters:
+      - lambda: |-
+          return x < 0.0f ? 0.0f : x;
       - multiply: 0.001
   - platform: template
     name: "Discharging power"
