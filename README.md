@@ -78,7 +78,7 @@
 
 Откройте `aninerel-4200-invertor.yaml` и настройте под себя:
 
-# substitutions:
+ substitutions:
 -  name: "aninerel4200"
 -  friendly_name: "Aninerel4200"
 -  tx_pin: GPIO21
@@ -95,7 +95,7 @@
 - <<: !include attach/common/ota.yaml
 - <<: !include attach/common/wifi.yaml
 - <<: !include attach/common/web/web_server3.yaml
-# packages:
+ packages:
   - common: !include attach/packages/standart.yaml
 
 ### 4. Интеграция с Home Assistant
