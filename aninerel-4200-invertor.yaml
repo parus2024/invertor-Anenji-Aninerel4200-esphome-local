@@ -46,7 +46,7 @@ time:
      - 2.pool.ntp.org
   - platform: homeassistant
     id: homeassistant_time
-# == # PERSISTENT PV ENERGY COUNTERS # ===
+
 globals: 
   # Накопленная энергия PV за всё время 
   - id: pv_energy_total 
@@ -57,72 +57,66 @@ globals:
   - id: pv_energy_today 
     type: float 
     restore_value: true 
-    initial_value: "0.0" 
-  # День, за который сейчас daily-счётчик. # Формат YYYYMMDD. 
-  - id: pv_energy_day 
-    type: int 
-    restore_value: true 
-    initial_value: "0"
-  - id: grid_import_energy_total
-    type: float
-    restore_value: true
     initial_value: "0.0"
+    # Энергия из сети за текущие сутки
   - id: grid_import_energy_today
     type: float
     restore_value: true
     initial_value: "0.0"
-  - id: grid_import_day
+  # Текущий день для обоих daily-счётчиков. Формат YYYYMMDD.
+  - id: energy_day
     type: int
     restore_value: true
     initial_value: "0"
-# === # PV ENERGY CALCULATOR # == 
-interval: 
-  - interval: 10s 
-    then: 
-      - lambda: |- 
-          // Текущая мощность PV в ваттах 
-          float power_w = id(smg0_pv_average_power).state; 
-          // Если Modbus ещё не дал нормальное значение — ничего не считаем 
-          if (isnan(power_w) || power_w < 0.0f || power_w > 10000.0f) { return; } 
-          // Энергия за 10 секунд: // W * seconds / 3600 = Wh // /1000 = kWh 
-          float energy_kwh = power_w * 10.0f / 3600000.0f; 
-          // Получаем текущую дату из ESPHome 
-          auto time = id(homeassistant_time).now(); 
-          if (!time.is_valid()) { return; } 
-          int today = time.year * 10000 + time.month * 100 + time.day_of_month; 
-          // Новый день — обнуляем дневной счётчик 
-          if (id(pv_energy_day) != today) { id(pv_energy_today) = 0.0f; id(pv_energy_day) = today; } 
-          // Добавляем энергию 
-          id(pv_energy_today) += energy_kwh; id(pv_energy_total) += energy_kwh;
+# === # ENERGY CALCULATOR # == 
+interval:
+  - interval: 10s
+    then:
       - lambda: |-
-          // Проверяем смену дня
-          auto now = id(homeassistant_time).now();
-
-          if (now.is_valid()) {
-            int today = now.year * 1000 + now.day_of_year;
-
-            if (id(grid_import_day) != today) {
-              id(grid_import_energy_today) = 0.0f;
-              id(grid_import_day) = today;
-            }
+          // ТЕКУЩАЯ ДАТА
+          auto time = id(homeassistant_time).now();
+          if (!time.is_valid()) {
+            return;
           }
-
-          // Интегрируем потребление из сети
+          int today =
+              time.year * 10000 +
+              time.month * 100 +
+              time.day_of_month;
+          // НОВЫЕ СУТКИ Сбрасываем оба daily-счётчика одновременно
+          if (id(energy_day) != today) {
+            id(pv_energy_today) = 0.0f;
+            id(grid_import_energy_today) = 0.0f;
+            id(energy_day) = today;
+          }
+          // PV ENERGY Текущая мощность PV в ваттах
+          float pv_power = id(smg0_pv_average_power).state;
+          // Если Modbus ещё не дал нормальное значение — PV энергию сейчас не считаем
+          if (!isnan(pv_power) &&
+              pv_power >= 0.0f &&
+              pv_power <= 10000.0f) {
+            // Энергия за 10 секунд:
+            // W * seconds / 3600 = Wh
+            // /1000 = kWh
+            float pv_energy_kwh =
+                pv_power * 10.0f / 3600000.0f;
+            id(pv_energy_today) += pv_energy_kwh;
+            id(pv_energy_total) += pv_energy_kwh;
+          }
+          // GRID IMPORT ENERGY
+          // Время между измерениями.
           static uint32_t last_ms = millis();
           uint32_t current_ms = millis();
-
           float dt_hours =
               (current_ms - last_ms) / 3600000.0f;
-
           last_ms = current_ms;
-
-          float power = id(average_mains_power).state;
-
-          if (!isnan(power) && power > 0) {
-            float energy_kwh = power * dt_hours / 1000.0f;
-
-            id(grid_import_energy_total) += energy_kwh;
-            id(grid_import_energy_today) += energy_kwh;
+          // Положительная average mains power = потребление энергии из сети
+          float grid_power = id(average_mains_power).state;
+          if (!isnan(grid_power) &&
+              grid_power > 0.0f) {
+            float grid_energy_kwh =
+                grid_power * dt_hours / 1000.0f;
+            id(grid_import_energy_today) +=
+                grid_energy_kwh;
           }
 sensor:
   - platform: template 
@@ -158,18 +152,23 @@ sensor:
     lambda: |-
       return id(grid_import_energy_today);
     update_interval: 30s
-
   - platform: template
-    id: grid_import_energy_total_sensor
-    name: "Grid import energy total"
-    icon: mdi:transmission-tower-import
-    unit_of_measurement: "kWh"
-    device_class: energy
-    state_class: total_increasing
-    accuracy_decimals: 3
+    name: "PV to home power"
+    id: pv_to_home_power
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
     lambda: |-
-      return id(grid_import_energy_total);
-    update_interval: 30s
+      if (isnan(id(output_active_power).state) ||
+          isnan(id(average_mains_power).state)) {
+        return {};
+      }
+      float output_power = id(output_active_power).state;
+      float grid_power = id(average_mains_power).state;
+      float power = output_power - grid_power;
+      return power > 0.0f ? power : 0.0f;
   - platform: total_daily_energy
     name: "Inverter total consumption today"
     power_id: output_active_power
@@ -511,6 +510,7 @@ sensor:
   - platform: modbus_controller
     modbus_controller_id: smg0
     name: "PV charging average power"
+    id: smg0_pv_charging_average_power
     address: 224
     register_type: holding
     value_type: S_WORD
