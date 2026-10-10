@@ -165,6 +165,57 @@ packages:
 
 - [yaml файл прошивки](aninerel-4200-invertor.yaml)
 - [внешний вид](esp32c3.jpg)
+
+## 🎨 Карточка потоков энергии (EyeBond Local Card)
+Для визуализации потоков энергии используется форк карточки groove-max/ha-eybond-local-card с адаптированным JS-файлом под сенсоры этого проекта. Карточка показывает диаграмму потоков PV / Сеть / Батарея / Дом, дневную статистику по каждому узлу и интерактивные графики истории.
+
+## 1. Установка карточки
+Установите groove-max/ha-eybond-local-card
+Скачайте eybond-local-card.js из этого [репозитория](eybond-local-card.js) и положите его в /homeassistant/www/community/ha-eybond-local-card/eybond-local-card.js.
+
+## 2. Добавление карточки на dashboard
+Добавьте карточку через UI или вставьте YAML вручную. Пример конфига:
+```yaml
+type: custom:eybond-local-card
+device: ___no_items_available___
+name: Электричество
+show_power_flow: true
+icon_scale: 1.2
+text_scale: 1.2
+weather_entity: weather.yandex_weather
+entity_overrides:
+  pv_power: sensor.aninerel4200_pv_average_power
+  battery_voltage: sensor.aninerel4200_battery_average_voltage
+  battery_power: sensor.aninerel4200_battery_average_power
+  battery_percent: sensor.eve_24v_105ah_soc
+  grid_frequency: sensor.aninerel4200_ac_frequency
+  pv_energy_today: sensor.aninerel4200_pv_energy_today
+  grid_power: sensor.aninerel4200_average_mains_power
+  grid_voltage: sensor.aninerel4200_ac_voltage
+  output_power: sensor.aninerel4200_output_active_power
+  grid_import_energy_today: sensor.aninerel4200_grid_import_energy_today
+  load_energy_today: sensor.aninerel4200_inverter_total_consumption_today
+  pv_voltage: sensor.aninerel4200_pv_average_voltage
+  pv_current: sensor.aninerel4200_pv_average_current
+  pv_energy_total: sensor.aninerel4200_pv_energy_total
+  # ↓↓ Все 6 потоков заданы — карточка использует прямые значения ↓↓
+  pv_to_home_power: sensor.aninerel4200_pv_to_home_power
+  pv_to_battery_power: sensor.aninerel4200_pv_charging_average_power
+  pv_to_grid_power: sensor.aninerel4200_pv_to_grid_power
+  battery_to_home_power: sensor.aninerel4200_discharging_power
+  grid_to_home_power: sensor.aninerel4200_grid_to_home_power
+  grid_to_battery_power: sensor.aninerel4200_grid_to_battery_power
+colors:
+  pv: '#ffb454'
+  pv_secondary: '#e26257'
+  grid: '#00f6ff'
+  grid_secondary: '#2a56d4'
+```
+## 3. Почему нужны entity_overrides
+Карточка изначально создана для интеграции EyeBond Local, которая подключается к инвертору через штатный Wi-Fi-коллектор. Она ищет сущности по суффиксу unique_id в формате {entry_id}_pv_power, которого у ESPHome-сенсоров нет.
+
+Поэтому все слоты задаются вручную через entity_overrides по entity_id. Это штатный механизм карточки, предусмотренный разработчиком для случаев, когда данные берутся из другой интеграции (ESPHome, BMS, шаблонные сенсоры).
+
 ## 🙏 Благодарности
 
 - **ESPHome сообществу** за фреймворк и компонент `modbus_controller`.
