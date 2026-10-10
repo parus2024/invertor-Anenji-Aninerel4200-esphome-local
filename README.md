@@ -163,16 +163,17 @@ packages:
 | `switch.remote_switch` | Удалённое включение/выключение |
 | `button.exit_fault_state` | Сброс аварийного состояния |
 
+## 📊 Скриншоты и Видео
 - [yaml файл прошивки](aninerel-4200-invertor.yaml)
 - [внешний вид](esp32c3.jpg)
 
 ## 🎨 Карточка потоков энергии (EyeBond Local Card)
 Для визуализации потоков энергии используется форк карточки groove-max/ha-eybond-local-card с адаптированным JS-файлом под сенсоры этого проекта. Карточка показывает диаграмму потоков PV / Сеть / Батарея / Дом, дневную статистику по каждому узлу и интерактивные графики истории.
-- [карточка энергии](energy-card.jpg)
+- [карточка энергии (скриншот)](energy-card.jpg)
 
 ## 1. Установка карточки
-Установите groove-max/ha-eybond-local-card
-Скачайте eybond-local-card.js из этого [репозитория](eybond-local-card.js) и положите его в /homeassistant/www/community/ha-eybond-local-card/eybond-local-card.js.
+- Установите groove-max/ha-eybond-local-card
+- Скачайте eybond-local-card.js из этого [репозитория](eybond-local-card.js) и положите его в /homeassistant/www/community/ha-eybond-local-card/eybond-local-card.js.
 
 ## 2. Добавление карточки на dashboard
 Добавьте карточку через UI или вставьте YAML вручную. Пример конфига:
