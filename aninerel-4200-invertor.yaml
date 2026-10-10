@@ -146,6 +146,8 @@ sensor:
     lambda: |-
       return id(grid_import_energy_today);
     update_interval: 30s
+  # === # POWER FLOW SENSORS (для карточки EyeBond) # ===
+
   - platform: template
     name: "PV to home power"
     id: pv_to_home_power
@@ -155,14 +157,62 @@ sensor:
     accuracy_decimals: 0
     update_interval: 5s
     lambda: |-
-      if (isnan(id(output_active_power).state) ||
-          isnan(id(average_mains_power).state)) {
-        return {};
-      }
-      float output_power = id(output_active_power).state;
-      float grid_power = id(average_mains_power).state;
-      float power = output_power - grid_power;
-      return power > 0.0f ? power : 0.0f;
+      float pv      = id(smg0_pv_average_power).state;
+      float output  = id(output_active_power).state;
+      float grid    = id(average_mains_power).state;
+      if (isnan(pv) || isnan(output) || isnan(grid)) return {};
+
+      // PV идёт в дом в первую очередь, но не больше, чем дом минус сеть
+      float pv_to_home = fminf(fmaxf(0.0f, pv),
+                               fmaxf(0.0f, output - fmaxf(0.0f, grid)));
+      return pv_to_home;
+
+  - platform: template
+    name: "PV to grid power"
+    id: pv_to_grid_power
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      // Отрицательный average_mains_power = экспорт в сеть
+      float grid = id(average_mains_power).state;
+      if (isnan(grid) || grid >= 0.0f) return 0.0f;
+      return -grid;
+
+  - platform: template
+    name: "Grid to home power"
+    id: grid_to_home_power
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      float grid    = id(average_mains_power).state;
+      float output  = id(output_active_power).state;
+      if (isnan(grid) || isnan(output)) return {};
+
+      // Положительный grid_power = импорт из сети
+      if (grid <= 0.0f) return 0.0f;
+      return fminf(grid, fmaxf(0.0f, output));
+
+  - platform: template
+    name: "Grid to battery power"
+    id: grid_to_battery_power
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      float battery_charge = id(smg0_charging_power).state;
+      float pv_charge      = id(smg0_pv_charging_average_power).state;
+      if (isnan(battery_charge) || isnan(pv_charge)) return {};
+
+      // Заряд от сети = общий заряд минус заряд от PV
+      return fmaxf(0.0f, battery_charge - pv_charge);
   - platform: total_daily_energy
     name: "Inverter total consumption today"
     power_id: output_active_power
@@ -1411,7 +1461,6 @@ number:
     unit_of_measurement: "%"
     entity_category: config
     icon: mdi:battery-high
-
   # Low DC cut-off SOC                 %       Uint  343 1 R/W Value Menu 45 3%~30% the max setting value must be less than the value of program 43.
   - platform: modbus_controller
     modbus_controller_id: smg_settings
@@ -1426,7 +1475,20 @@ number:
     unit_of_measurement: "%"
     entity_category: config
     icon: mdi:battery-low
-
+  # Макс. отдача в сеть                             1W     Uint  344 1 R/W Range: 0~6200
+  - platform: modbus_controller
+    modbus_controller_id: smg_settings
+    name: "Max grid export power"
+    use_write_multiple: true
+    address: 344
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0.0
+    max_value: 6200.0
+    step: 10.0
+    unit_of_measurement: "W"
+    entity_category: config
+    icon: mdi:transmission-tower-export
 button:
   # Exit the fault mode                                           Uint  426   W   1: Exit the fault state
   - platform: template
